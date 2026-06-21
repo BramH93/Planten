@@ -1,4 +1,48 @@
 /* ============================================================
+   PHOTO HANDLING
+   Photos are compressed client-side (resized + re-encoded as
+   JPEG) before being stored as a data URL in localStorage —
+   keeps each photo small enough that 7+ plants with photos
+   still fit comfortably under the localStorage size limit.
+   ============================================================ */
+
+const PHOTO_MAX_DIMENSION = 480; // px, longest side
+const PHOTO_JPEG_QUALITY = 0.75;
+
+function compressImageFile(file) {
+  return new Promise((resolve, reject) => {
+    if (!file || !file.type.startsWith("image/")) {
+      reject(new Error("Please choose an image file."));
+      return;
+    }
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("Could not read that file."));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error("Could not load that image."));
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > height && width > PHOTO_MAX_DIMENSION) {
+          height = Math.round(height * (PHOTO_MAX_DIMENSION / width));
+          width = PHOTO_MAX_DIMENSION;
+        } else if (height > PHOTO_MAX_DIMENSION) {
+          width = Math.round(width * (PHOTO_MAX_DIMENSION / height));
+          height = PHOTO_MAX_DIMENSION;
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", PHOTO_JPEG_QUALITY));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+/* ============================================================
    APP STATE
    Persisted to localStorage so the user's edits (new plants,
    rooms, watering log) survive between visits.
@@ -160,7 +204,13 @@ function renderPlantRow(plant, room) {
 
   const reasonText = water.reasons.length ? `Why: ${water.reasons.join(", ")}` : "";
 
+  const cameraIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 8a2 2 0 0 1 2-2h1.5l1-1.5h7l1 1.5H18a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8Z"/><circle cx="12" cy="13" r="3.2"/></svg>`;
+  const photoEl = plant.photo
+    ? `<button type="button" class="plant-photo has-photo" data-photo-upload="${plant.id}" title="Change photo" style="background-image:url('${plant.photo}')"></button>`
+    : `<button type="button" class="plant-photo" data-photo-upload="${plant.id}" title="Add a photo">${cameraIcon}</button>`;
+
   row.innerHTML = `
+    ${photoEl}
     <div class="droplet" title="Water urgency">${dropletSVG(water.urgency)}</div>
     <div class="plant-info">
       <h3>${plant.nickname || species.commonName}</h3>
@@ -177,6 +227,55 @@ function renderPlantRow(plant, room) {
     </div>
   `;
   return row;
+}
+
+/* ============================================================
+   PHOTO UPLOAD (shared hidden file input)
+   ============================================================ */
+
+let pendingPhotoTarget = null; // plant id, or "__new__" for the add-plant form
+
+function ensurePhotoInput() {
+  let input = document.getElementById("photo-file-input");
+  if (input) return input;
+  input = document.createElement("input");
+  input.type = "file";
+  input.accept = "image/*";
+  input.id = "photo-file-input";
+  input.style.display = "none";
+  document.body.appendChild(input);
+  input.addEventListener("change", handlePhotoFileChosen);
+  return input;
+}
+
+async function handlePhotoFileChosen(e) {
+  const file = e.target.files[0];
+  e.target.value = ""; // allow re-choosing the same file later
+  if (!file || !pendingPhotoTarget) return;
+
+  try {
+    const dataUrl = await compressImageFile(file);
+    if (pendingPhotoTarget === "__new__") {
+      newPlantPhoto = dataUrl;
+      renderNewPlantPhotoPreview();
+    } else {
+      const plant = state.plants.find(p => p.id === pendingPhotoTarget);
+      if (plant) {
+        plant.photo = dataUrl;
+        saveState();
+        renderRooms();
+      }
+    }
+  } catch (err) {
+    alert(err.message || "Could not use that photo.");
+  } finally {
+    pendingPhotoTarget = null;
+  }
+}
+
+function openPhotoPicker(targetId) {
+  pendingPhotoTarget = targetId;
+  ensurePhotoInput().click();
 }
 
 /* ============================================================
@@ -214,6 +313,17 @@ function deleteRoom(roomId) {
    ADD PLANT FORM
    ============================================================ */
 
+let newPlantPhoto = null;
+
+function renderNewPlantPhotoPreview() {
+  const wrap = document.getElementById("new-plant-photo-preview");
+  if (!wrap) return;
+  const cameraIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 8a2 2 0 0 1 2-2h1.5l1-1.5h7l1 1.5H18a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8Z"/><circle cx="12" cy="13" r="3.2"/></svg>`;
+  wrap.style.backgroundImage = newPlantPhoto ? `url('${newPlantPhoto}')` : "none";
+  wrap.classList.toggle("has-photo", !!newPlantPhoto);
+  wrap.innerHTML = newPlantPhoto ? "" : cameraIcon;
+}
+
 function populateSpeciesSelect() {
   const sel = document.getElementById("new-plant-species");
   sel.innerHTML = Object.entries(SPECIES).map(([key, s]) =>
@@ -246,11 +356,14 @@ function handleAddPlant(e) {
     roomId,
     nickname: nickname || null,
     lastWatered: todayISO,
-    lastFed: todayISO
+    lastFed: todayISO,
+    photo: newPlantPhoto || null
   });
   saveState();
   renderRooms();
   document.getElementById("new-plant-nickname").value = "";
+  newPlantPhoto = null;
+  renderNewPlantPhotoPreview();
 }
 
 /* ============================================================
@@ -316,6 +429,12 @@ document.addEventListener("click", (e) => {
   const feedBtn = e.target.closest("[data-feed]");
   if (feedBtn) { markFed(feedBtn.dataset.feed); return; }
 
+  const photoBtn = e.target.closest("[data-photo-upload]");
+  if (photoBtn) { openPhotoPicker(photoBtn.dataset.photoUpload); return; }
+
+  const newPhotoBtn = e.target.closest("#new-plant-photo-preview");
+  if (newPhotoBtn) { openPhotoPicker("__new__"); return; }
+
   const editRoomBtn = e.target.closest("[data-room-edit]");
   if (editRoomBtn) {
     const roomId = editRoomBtn.dataset.roomEdit;
@@ -336,6 +455,7 @@ document.addEventListener("DOMContentLoaded", () => {
   populateRoomSelect();
   setupCompassPicker();
   setupIndoorToggle();
+  renderNewPlantPhotoPreview();
 
   document.getElementById("add-plant-form").addEventListener("submit", handleAddPlant);
   document.getElementById("add-room-form").addEventListener("submit", handleAddRoom);
