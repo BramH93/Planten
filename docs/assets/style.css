@@ -245,4 +245,246 @@ button {
 }
 
 .room-icon {
-  width:
+  width: 34px; height: 34px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--moss-pale);
+  border-radius: 9px;
+  font-size: 17px;
+  flex-shrink: 0;
+}
+
+.room-name {
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 600;
+}
+
+.room-meta {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.room-edit-btn {
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-size: 11px;
+  color: var(--ink-soft);
+  font-family: var(--font-mono);
+}
+.room-edit-btn:hover { background: var(--moss-pale); color: var(--ink); }
+
+/* ---------- Plant rows ---------- */
+
+.plant-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--line);
+}
+.plant-row:last-child { border-bottom: none; }
+
+.droplet {
+  width: 40px;
+  height: 40px;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.droplet svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.plant-info h3 {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 600;
+  margin: 0 0 2px;
+}
+
+.plant-info .latin {
+  font-style: italic;
+  font-size: 12px;
+  color: var(--moss);
+  margin: 0 0 6px;
+}
+
+.plant-status {
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.status-pill {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 3px 8px;
+  border-radius: 100px;
+  white-space: nowrap;
+}
+.status-pill.ok       { background: var(--moss-pale); color: var(--sage-deep); }
+.status-pill.soon     { background: #F3E3C8; color: #8A6325; }
+.status-pill.due      { background: var(--terracotta-soft); color: var(--rust); }
+.status-pill.overdue  { background: var(--rust); color: white; }
+.status-pill.dormant  { background: #E4E4E4; color: #777; }
+
+.plant-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: stretch;
+}
+
+.reason-line {
+  font-size: 11.5px;
+  color: var(--moss);
+  margin-top: 4px;
+  display: block;
+}
+
+/* ---------- Add forms ---------- */
+
+.add-card {
+  border: 1.5px dashed var(--line);
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 22px;
+  background: rgba(255,255,255,0.4);
+}
+
+.add-card h3 {
+  font-family: var(--font-display);
+  font-size: 17px;
+  margin: 0 0 14px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+label {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-soft);
+  margin-bottom: 5px;
+}
+
+select, input[type="text"], input[type="date"] {
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  color: var(--ink);
+}
+select:focus, input:focus {
+  outline: 2px solid var(--sage);
+  outline-offset: 1px;
+}
+
+.toggle-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.toggle-btn {
+  flex: 1;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: white;
+  font-size: 12.5px;
+  color: var(--ink-soft);
+}
+.toggle-btn.active {
+  background: var(--sage);
+  border-color: var(--sage);
+  color: white;
+  font-weight: 600;
+}
+
+/* ---------- Compass picker ---------- */
+
+.compass-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin-top: 4px;
+}
+.compass-btn {
+  padding: 7px 4px;
+  border-radius: 7px;
+  border: 1px solid var(--line);
+  background: white;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+.compass-btn.active {
+  background: var(--terracotta);
+  border-color: var(--terracotta);
+  color: white;
+  font-weight: 700;
+}
+
+/* ---------- Empty state ---------- */
+
+.empty-state {
+  text-align: center;
+  padding: 50px 20px;
+  color: var(--moss);
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+/* ---------- Footer ---------- */
+
+.footer-note {
+  margin-top: 50px;
+  padding-top: 20px;
+  border-top: 1px dashed var(--line);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--moss);
+  text-align: center;
+  line-height: 1.7;
+}
+.footer-note a { color: var(--moss); }
+
+/* ---------- Responsive ---------- */
+
+@media (max-width: 540px) {
+  .plant-row { grid-template-columns: auto 1fr; }
+  .plant-actions { grid-column: 1 / -1; flex-direction: row; margin-top: 8px; }
+  .plant-actions .btn { flex: 1; justify-content: center; }
+  .weather-strip { flex-direction: column; align-items: flex-start; }
+  .weather-strip .wx-detail { border-left: none; padding-left: 0; border-top: 1px dashed var(--line); padding-top: 10px; }
+}
+
+/* ---------- Tiny utility ---------- */
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px;
+  overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap;
+}
