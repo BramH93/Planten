@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Greenhouse Ledger — Plant Care Tracker</title>
+<meta name="description" content="A weather-aware plant care tracker for Utrecht, Netherlands.">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<div class="shell">
+
+  <header class="masthead">
+    <p class="masthead-eyebrow">A living care log</p>
+    <h1>The Greenhouse <em>Ledger</em></h1>
+  </header>
+
+  <div id="weather-strip" class="weather-strip"></div>
+
+  <div class="section-head">
+    <h2>Rooms &amp; plants</h2>
+    <span class="count" id="plant-count"></span>
+  </div>
+
+  <div id="rooms-container"></div>
+
+  <!-- Add plant -->
+  <div class="add-card">
+    <h3>Add a plant</h3>
+    <form id="add-plant-form">
+      <div class="form-grid">
+        <div>
+          <label for="new-plant-species">Species</label>
+          <select id="new-plant-species"></select>
+        </div>
+        <div>
+          <label for="new-plant-room">Room</label>
+          <select id="new-plant-room"></select>
+        </div>
+        <div>
+          <label for="new-plant-nickname">Nickname (optional)</label>
+          <input type="text" id="new-plant-nickname" placeholder="e.g. Petra">
+        </div>
+      </div>
+      <button type="submit" class="btn">+ Add plant</button>
+    </form>
+  </div>
+
+  <!-- Add room -->
+  <div class="add-card">
+    <h3>Add a room or spot</h3>
+    <form id="add-room-form">
+      <div class="form-grid">
+        <div>
+          <label for="new-room-name">Name</label>
+          <input type="text" id="new-room-name" placeholder="e.g. Kitchen windowsill" required>
+        </div>
+        <div>
+          <label>Indoor or outdoor</label>
+          <div class="toggle-row" id="indoor-toggle">
+            <button type="button" class="toggle-btn active" data-value="indoor">Indoor</button>
+            <button type="button" class="toggle-btn" data-value="outdoor">Outdoor</button>
+          </div>
+        </div>
+      </div>
+      <label>Facing direction</label>
+      <div class="compass-grid" id="compass-grid"></div>
+      <br>
+      <button type="submit" class="btn">+ Add room</button>
+    </form>
+  </div>
+
+  <p class="footer-note">
+    Watering windows adjust to the live forecast for Utrecht, NL via
+    <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a>.
+    Your rooms and plants are saved in this browser only —
+    they won't sync across devices.
+  </p>
+
+</div>
+
+<script src="assets/plant-data.js"></script>
+<script src="assets/care-engine.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>
