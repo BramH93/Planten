@@ -96,4 +96,250 @@ function dropletSVG(urgency) {
 
 function urgencyLabel(urgency, daysUntil) {
   if (urgency === "dormant") return "Resting";
-  if (urgency === "overdue")
+  if (urgency === "overdue") return `${Math.abs(daysUntil)}d overdue`;
+  if (urgency === "due") return "Due today";
+  if (urgency === "soon") return daysUntil === 1 ? "Tomorrow" : `In ${daysUntil}d`;
+  return `In ${daysUntil}d`;
+}
+
+function renderRooms() {
+  const container = document.getElementById("rooms-container");
+  container.innerHTML = "";
+
+  const countEl = document.getElementById("plant-count");
+  if (countEl) {
+    const n = state.plants.length;
+    countEl.textContent = `${n} plant${n === 1 ? "" : "s"} across ${state.rooms.length} room${state.rooms.length === 1 ? "" : "s"}`;
+  }
+
+  if (state.rooms.length === 0) {
+    container.innerHTML = `<div class="empty-state">No rooms yet — add one below to get started.</div>`;
+    return;
+  }
+
+  state.rooms.forEach(room => {
+    const plantsInRoom = state.plants.filter(p => p.roomId === room.id);
+    const orientationInfo = ORIENTATIONS[room.orientation];
+    const orientationDisplay = room.orientationRaw || orientationInfo?.label || room.orientation;
+
+    const roomEl = document.createElement("div");
+    roomEl.className = "room";
+    roomEl.innerHTML = `
+      <div class="room-head">
+        <div class="room-head-left">
+          <div class="room-icon">${room.indoor ? "🏠" : "🌤️"}</div>
+          <div>
+            <div class="room-name">${room.name}</div>
+            <div class="room-meta">${room.indoor ? "Indoor" : "Outdoor"} · facing ${orientationDisplay}</div>
+          </div>
+        </div>
+        <button class="room-edit-btn" data-room-edit="${room.id}">Edit room</button>
+      </div>
+      <div class="room-plants" data-room-plants="${room.id}"></div>
+    `;
+    container.appendChild(roomEl);
+
+    const plantsContainer = roomEl.querySelector(`[data-room-plants="${room.id}"]`);
+    if (plantsInRoom.length === 0) {
+      plantsContainer.innerHTML = `<div class="empty-state" style="padding:24px;">No plants in this room yet.</div>`;
+    } else {
+      plantsInRoom.forEach(plant => {
+        plantsContainer.appendChild(renderPlantRow(plant, room));
+      });
+    }
+  });
+}
+
+function renderPlantRow(plant, room) {
+  const species = SPECIES[plant.speciesKey];
+  const water = calculateWaterSchedule(plant, species, room, plant.lastWatered, weatherData);
+  const feed = calculateFeedSchedule(species, plant.lastFed);
+
+  const row = document.createElement("div");
+  row.className = "plant-row";
+
+  const reasonText = water.reasons.length ? `Why: ${water.reasons.join(", ")}` : "";
+
+  row.innerHTML = `
+    <div class="droplet" title="Water urgency">${dropletSVG(water.urgency)}</div>
+    <div class="plant-info">
+      <h3>${plant.nickname || species.commonName}</h3>
+      <p class="latin">${species.latinName}</p>
+      <div class="plant-status">
+        <span class="status-pill ${water.urgency}">💧 ${urgencyLabel(water.urgency, water.daysUntil)}</span>
+        <span class="status-pill ${feed.paused ? 'dormant' : feed.urgency}">🌱 ${feed.paused ? "Resting" : urgencyLabel(feed.urgency, feed.daysUntil)}</span>
+      </div>
+      ${reasonText ? `<span class="reason-line">${reasonText}</span>` : ""}
+    </div>
+    <div class="plant-actions">
+      <button class="btn btn-water btn-small" data-water="${plant.id}">Watered today</button>
+      <button class="btn btn-feed btn-small" data-feed="${plant.id}">Fed today</button>
+    </div>
+  `;
+  return row;
+}
+
+/* ============================================================
+   ACTIONS
+   ============================================================ */
+
+function markWatered(plantId) {
+  const plant = state.plants.find(p => p.id === plantId);
+  if (!plant) return;
+  plant.lastWatered = new Date().toISOString().slice(0, 10);
+  saveState();
+  renderRooms();
+}
+
+function markFed(plantId) {
+  const plant = state.plants.find(p => p.id === plantId);
+  if (!plant) return;
+  plant.lastFed = new Date().toISOString().slice(0, 10);
+  saveState();
+  renderRooms();
+}
+
+function deleteRoom(roomId) {
+  if (state.plants.some(p => p.roomId === roomId)) {
+    alert("Move or remove the plants in this room first.");
+    return;
+  }
+  state.rooms = state.rooms.filter(r => r.id !== roomId);
+  saveState();
+  renderRooms();
+  populateRoomSelect();
+}
+
+/* ============================================================
+   ADD PLANT FORM
+   ============================================================ */
+
+function populateSpeciesSelect() {
+  const sel = document.getElementById("new-plant-species");
+  sel.innerHTML = Object.entries(SPECIES).map(([key, s]) =>
+    `<option value="${key}">${s.commonName}</option>`
+  ).join("");
+}
+
+function populateRoomSelect() {
+  const sel = document.getElementById("new-plant-room");
+  sel.innerHTML = state.rooms.map(r =>
+    `<option value="${r.id}">${r.name}</option>`
+  ).join("");
+}
+
+function handleAddPlant(e) {
+  e.preventDefault();
+  const speciesKey = document.getElementById("new-plant-species").value;
+  const roomId = document.getElementById("new-plant-room").value;
+  const nickname = document.getElementById("new-plant-nickname").value.trim();
+
+  if (!roomId) {
+    alert("Add a room first, then add plants to it.");
+    return;
+  }
+
+  const todayISO = new Date().toISOString().slice(0, 10);
+  state.plants.push({
+    id: "p_" + Date.now(),
+    speciesKey,
+    roomId,
+    nickname: nickname || null,
+    lastWatered: todayISO,
+    lastFed: todayISO
+  });
+  saveState();
+  renderRooms();
+  document.getElementById("new-plant-nickname").value = "";
+}
+
+/* ============================================================
+   ADD ROOM FORM
+   ============================================================ */
+
+let selectedIndoor = true;
+let selectedOrientation = "S";
+
+function setupCompassPicker() {
+  const grid = document.getElementById("compass-grid");
+  const dirs = ["N","NE","E","SE","S","SW","W","NW"];
+  grid.innerHTML = dirs.map(d =>
+    `<button type="button" class="compass-btn ${d === selectedOrientation ? "active" : ""}" data-dir="${d}">${d}</button>`
+  ).join("");
+
+  grid.querySelectorAll(".compass-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      selectedOrientation = btn.dataset.dir;
+      grid.querySelectorAll(".compass-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+    });
+  });
+}
+
+function setupIndoorToggle() {
+  const wrap = document.getElementById("indoor-toggle");
+  wrap.querySelectorAll(".toggle-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      selectedIndoor = btn.dataset.value === "indoor";
+      wrap.querySelectorAll(".toggle-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+    });
+  });
+}
+
+function handleAddRoom(e) {
+  e.preventDefault();
+  const name = document.getElementById("new-room-name").value.trim();
+  if (!name) return;
+
+  state.rooms.push({
+    id: "room_" + Date.now(),
+    name,
+    indoor: selectedIndoor,
+    orientation: selectedOrientation,
+    orientationRaw: null
+  });
+  saveState();
+  renderRooms();
+  populateRoomSelect();
+  document.getElementById("new-room-name").value = "";
+}
+
+/* ============================================================
+   EVENT DELEGATION (for dynamically rendered buttons)
+   ============================================================ */
+
+document.addEventListener("click", (e) => {
+  const waterBtn = e.target.closest("[data-water]");
+  if (waterBtn) { markWatered(waterBtn.dataset.water); return; }
+
+  const feedBtn = e.target.closest("[data-feed]");
+  if (feedBtn) { markFed(feedBtn.dataset.feed); return; }
+
+  const editRoomBtn = e.target.closest("[data-room-edit]");
+  if (editRoomBtn) {
+    const roomId = editRoomBtn.dataset.roomEdit;
+    const room = state.rooms.find(r => r.id === roomId);
+    if (!room) return;
+    const doDelete = confirm(`Remove "${room.name}"? (Only works if it has no plants left in it.)\n\nPress Cancel to keep it.`);
+    if (doDelete) deleteRoom(roomId);
+    return;
+  }
+});
+
+/* ============================================================
+   INIT
+   ============================================================ */
+
+document.addEventListener("DOMContentLoaded", () => {
+  populateSpeciesSelect();
+  populateRoomSelect();
+  setupCompassPicker();
+  setupIndoorToggle();
+
+  document.getElementById("add-plant-form").addEventListener("submit", handleAddPlant);
+  document.getElementById("add-room-form").addEventListener("submit", handleAddRoom);
+
+  renderRooms();
+  renderWeather();
+});
